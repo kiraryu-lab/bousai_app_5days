@@ -1,25 +1,237 @@
 {% extends "base.html" %}
 
-{% block title %}指示・発信ボード - 防災アプリ{% endblock %}
+{% block title %}発信ボード | 防災アプリ{% endblock %}
 
 {% block content %}
-<h2>発信ボード</h2>
-<p>住民向けの発信を登録・確認できます。</p>
+<style>
+  .board-intro { margin: 0 0 26px; color: var(--muted); }
 
-<!-- 発信一覧 -->
-<h3>発信一覧</h3>
-{% if instructions %}
-<table border="1" cellpadding="5">
-  <tr>
-    <th>内容</th>
-  </tr>
-  {% for inst in instructions %}
-  <tr>
-    <td>{{ inst.content }}{% if inst.shelter %}（避難先: {{ inst.shelter }}）{% endif %}</td>
-  </tr>
-  {% endfor %}
-</table>
-{% else %}
-<p>登録されている指示はありません。</p>
-{% endif %}
+  .board-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(300px, .82fr);
+    gap: 24px;
+    align-items: start;
+  }
+
+  .board-panel {
+    padding: 26px;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: #fff;
+    box-shadow: 0 7px 24px rgba(64, 88, 120, .07);
+  }
+
+  .panel-title {
+    margin: 0 0 22px;
+    color: var(--text);
+    font-size: 19px;
+    font-weight: 800;
+  }
+
+  .field { margin-bottom: 18px; }
+  .field label { display: block; margin-bottom: 7px; font-weight: 700; }
+
+  .required {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    color: #b42318;
+    background: #fff0ee;
+    font-size: 11px;
+    font-weight: 700;
+  }
+
+  .field select {
+    width: 100%;
+    min-height: 44px;
+    padding: 8px 12px;
+    border: 1px solid #ccd5e0;
+    border-radius: 6px;
+    color: var(--text);
+    background: #fff;
+    font: inherit;
+  }
+
+  .field select:focus {
+    outline: 3px solid rgba(43, 93, 171, .16);
+    border-color: var(--blue);
+  }
+
+  .helper { margin: 7px 0 0; color: var(--muted); font-size: 12px; }
+
+  .preview {
+    min-height: 192px;
+    padding: 18px;
+    border: 1px solid #dce5f2;
+    border-radius: 8px;
+    background: #f7faff;
+    line-height: 1.9;
+    white-space: pre-line;
+  }
+
+  .preview-label {
+    margin: 0 0 8px;
+    color: var(--blue);
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: .04em;
+  }
+
+  .publish-button {
+    width: 100%;
+    min-height: 48px;
+    margin-top: 20px;
+    border: 0;
+    border-radius: 6px;
+    color: #fff;
+    background: var(--blue);
+    font: inherit;
+    font-weight: 800;
+    cursor: pointer;
+  }
+
+  .publish-button:hover { background: var(--blue-dark); }
+
+  .publish-note {
+    display: none;
+    margin: 14px 0 0;
+    padding: 11px 13px;
+    border-radius: 6px;
+    color: #7a4b00;
+    background: #fff7df;
+    font-size: 13px;
+  }
+
+  .publish-note.is-visible { display: block; }
+
+  .history-panel { margin-top: 24px; }
+  .history-list { display: grid; gap: 12px; }
+
+  .history-item {
+    padding: 16px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: #fbfcfe;
+  }
+
+  .history-meta {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 8px;
+    color: var(--muted);
+    font-size: 12px;
+  }
+
+  .history-status { color: #2c8a4a; font-weight: 700; }
+  .history-message { margin: 0; white-space: pre-line; }
+
+  @media (max-width: 760px) {
+    .board-layout { grid-template-columns: 1fr; }
+    .board-panel { padding: 20px; }
+  }
+</style>
+
+<h2>発信ボード</h2>
+<p class="board-intro">避難情報を入力し、住民向けに発信する内容を確認します。</p>
+
+<div class="board-layout">
+  <section class="board-panel" aria-labelledby="form-title">
+    <h3 class="panel-title" id="form-title">避難情報を入力</h3>
+    <form id="announcementForm">
+      <div class="field">
+        <label for="informationType">避難情報区分<span class="required">必須</span></label>
+        <select id="informationType" required>
+          <option value="">選択してください</option>
+          <option value="高齢者等避難">高齢者等避難</option>
+          <option value="避難指示">避難指示</option>
+          <option value="緊急安全確保">緊急安全確保</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="targetArea">対象地域<span class="required">必須</span></label>
+        <select id="targetArea" required>
+          <option value="">選択してください</option>
+          <option value="青森市全域">青森市全域</option>
+          <option value="青森市中央地区">青森市中央地区</option>
+          <option value="青森市東地区">青森市東地区</option>
+          <option value="青森市西地区">青森市西地区</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="shelter">避難所名<span class="required">必須</span></label>
+        <select id="shelter" required>
+          <option value="">選択してください</option>
+          {% for shelter in shelters %}
+            <option value="{{ shelter.name }}">{{ shelter.name }}</option>
+          {% endfor %}
+        </select>
+        <p class="helper">登録済みの避難所から選択します。</p>
+      </div>
+
+      <button class="publish-button" type="submit">発信内容を確認</button>
+      <p class="publish-note" id="publishNote" role="status"></p>
+    </form>
+  </section>
+
+  <section class="board-panel" aria-labelledby="preview-title">
+    <h3 class="panel-title" id="preview-title">発信メッセージのプレビュー</h3>
+    <p class="preview-label">住民向け表示内容</p>
+    <div class="preview" id="messagePreview">入力内容を選択すると、発信メッセージが表示されます。</div>
+  </section>
+</div>
+
+<section class="board-panel history-panel" aria-labelledby="history-title">
+  <h3 class="panel-title" id="history-title">過去の発信</h3>
+  {% if instructions %}
+    <div class="history-list">
+      {% for inst in instructions %}
+        <article class="history-item">
+          <div class="history-meta">
+            <span>{{ inst.created_at or '日時未登録' }}</span>
+            <span class="history-status">{{ inst.status or '確認中' }}</span>
+          </div>
+          <p class="history-message">{{ inst.content }}{% if inst.shelter %}
+避難先：{{ inst.shelter }}{% endif %}</p>
+        </article>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p>登録されている発信はありません。</p>
+  {% endif %}
+</section>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('announcementForm');
+    const type = document.getElementById('informationType');
+    const area = document.getElementById('targetArea');
+    const shelter = document.getElementById('shelter');
+    const preview = document.getElementById('messagePreview');
+    const note = document.getElementById('publishNote');
+
+    function updatePreview() {
+      if (!type.value || !area.value || !shelter.value) {
+        preview.textContent = '入力内容を選択すると、発信メッセージが表示されます。';
+        return;
+      }
+
+      preview.textContent = `${area.value}に${type.value}を発令しました。\n${area.value}にお住まいの方は、${shelter.value}に避難してください。\n周囲の状況を確認し、安全を確保してください。`;
+    }
+
+    [type, area, shelter].forEach(function(input) {
+      input.addEventListener('change', updatePreview);
+    });
+
+    form.addEventListener('submit', function(event) {
+      event.preventDefault();
+      if (!form.reportValidity()) return;
+      note.textContent = '発信内容を確認しました。実際の発信・ホーム画面への反映は次の段階で実装します。';
+      note.classList.add('is-visible');
+    });
+  });
+</script>
 {% endblock %}
