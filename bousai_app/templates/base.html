@@ -4,31 +4,150 @@
   <meta charset="utf-8">
   <title>{% block title %}防災アプリ{% endblock %}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --blue: #2b5dab;
+      --blue-dark: #234f99;
+      --text: #31445d;
+      --muted: #6e7b8b;
+      --line: #edf1f5;
+      --surface: #ffffff;
+      --background: #f7f9fc;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      color: var(--text);
+      background: var(--background);
+      font-family: 'Noto Sans JP', sans-serif;
+      font-size: 15px;
+    }
+
+    .site-header {
+      height: 70px;
+      background: var(--blue);
+      color: #fff;
+      box-shadow: 0 2px 8px rgba(35, 79, 153, .16);
+    }
+
+    .header-inner {
+      width: min(100% - 48px, 1380px);
+      height: 100%;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .brand {
+      color: #fff;
+      font-size: 25px;
+      font-weight: 800;
+      letter-spacing: .04em;
+      text-decoration: none;
+    }
+
+    .menu-button {
+      display: inline-grid;
+      gap: 4px;
+      width: 38px;
+      height: 38px;
+      padding: 9px 7px;
+      border: 0;
+      background: transparent;
+      cursor: pointer;
+    }
+
+    .menu-button span {
+      display: block;
+      height: 3px;
+      border-radius: 2px;
+      background: #fff;
+    }
+
+    .site-nav {
+      display: none;
+      position: absolute;
+      top: 70px;
+      right: 24px;
+      z-index: 10;
+      min-width: 220px;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      box-shadow: 0 10px 28px rgba(34, 58, 91, .16);
+    }
+
+    .site-nav.is-open { display: grid; }
+
+    .site-nav a {
+      padding: 10px 12px;
+      color: var(--text);
+      text-decoration: none;
+      border-radius: 5px;
+    }
+
+    .site-nav a:hover { background: #f0f5fd; color: var(--blue); }
+
+    .page-main {
+      width: min(100% - 48px, 920px);
+      margin: 34px auto 72px;
+    }
+
+    .card {
+      padding: 28px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: var(--surface);
+      box-shadow: 0 7px 24px rgba(64, 88, 120, .07);
+    }
+
+    @media (max-width: 640px) {
+      .header-inner, .page-main { width: min(100% - 28px, 920px); }
+      .page-main { margin-top: 20px; }
+      .card { padding: 19px; border-radius: 14px; }
+      .brand { font-size: 21px; }
+      .site-nav { right: 14px; }
+    }
+  </style>
 </head>
 <body>
-  <!-- ヘッダー -->
-  <h1>防災アプリ</h1>
+  <header class="site-header">
+    <div class="header-inner">
+      <a class="brand" href="{{ url_for('index') }}">防災アプリ</a>
+      <button class="menu-button" type="button" aria-label="メニューを開く" aria-expanded="false" aria-controls="siteNav">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+    <nav class="site-nav" id="siteNav">
+      <a href="{{ url_for('index') }}">ホーム</a>
+      <a href="{{ url_for('shelter_search') }}">避難所検索</a>
+      <a href="{{ url_for('shelter_register') }}">避難所登録</a>
+      <a href="{{ url_for('board') }}">指示・発信ボード</a>
+      {% if session.logged_in %}
+        <a href="{{ url_for('logout') }}">ログアウト{% if session.username %}（{{ session.username }}）{% endif %}</a>
+      {% else %}
+        <a href="{{ url_for('login') }}">ログイン</a>
+      {% endif %}
+    </nav>
+  </header>
 
-  <!-- ナビゲーション -->
-  <nav>
-    <a href="/">ホーム</a> |
-    <a href="/shelter_search">避難所検索</a> |
-    <a href="/shelter_register">避難所登録</a> |
-    <a href="/board">指示・発信ボード</a>
-    ｜
-    {% if session.logged_in %}
-      ログイン中{% if session.username %}（{{ session.username }}）{% endif %}
-      <a href="/logout">ログアウト</a>
-    {% else %}
-      未ログイン
-      <a href="/login">ログイン</a>
-    {% endif %}
-  </nav>
-  <hr>
-
-  <main>
-    <!-- ここに子テンプレートの content が入る -->
+  <main class="page-main">
     {% block content %}{% endblock %}
   </main>
+  <script>
+    const menuButton = document.querySelector('.menu-button');
+    const siteNav = document.querySelector('#siteNav');
+    menuButton?.addEventListener('click', () => {
+      const isOpen = siteNav.classList.toggle('is-open');
+      menuButton.setAttribute('aria-expanded', String(isOpen));
+    });
+  </script>
 </body>
 </html>
